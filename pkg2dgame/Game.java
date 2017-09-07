@@ -23,6 +23,7 @@ import objects.Button;
 import objects.Menu;
 import objects.PickUp;
 import objects.Projectile;
+import objects.Room;
 import objects.Splat;
 import objects.Zombie;
 
@@ -105,17 +106,13 @@ public class Game {
     private Menu menu;
     private Menu paused_menu;
     
-    private Block[][] map;
-    private PickUp[][] pickup_map;
     //private Entity[][] entity_map;
+    private Room room;
     private Player player;
     
-    private ArrayList<Drawable> drawables;
-    private ArrayList<Block> blocks;
-    private ArrayList<Entity> entities;
-    private static ArrayList<PickUp> pickups;
-    private ArrayList<Projectile> projectiles;
-    private ArrayList<Splat> splats;
+    private static ArrayList<Drawable> drawables;
+    private static ArrayList<Projectile> projectiles;
+    private static ArrayList<Splat> splats;
     
     private Projectile[] projectiles_to_remove;
     private Entity[] entities_to_remove;
@@ -154,14 +151,14 @@ public class Game {
         run();
     }
     public void init_game(){
-        entities = new ArrayList<>();
         drawables = new ArrayList<>();
         projectiles = new ArrayList<>();
         splats = new ArrayList<>();
         projectiles_to_remove = new Projectile[100];
         entities_to_remove = new Entity[100];
         loadPlayer();
-        generateLevel();
+        room = new Room(1);
+        //generateLevel();
         s.setDrawables(drawables);
         ui.initPlayer(player);
         s.setGameOver(false);
@@ -221,32 +218,32 @@ public class Game {
     
     public void updateGame(double delta){
         //Every change * delta;
-        for(Entity e: entities){
+        for(Entity e: room.getEntities()){
             //Movement
             //0.7 is just so that pressing for example 'W' and 'D' won't make the player move insanely fast.
             //Calculated with pythagoras theorem.
-            if(e.getUp() && !e.getDown() && collides(e) == null){
+            if(e.getUp() && !e.getDown() && collides(e, 0) == null){
                 if(e.getLeft() ^ e.getRight()){
                     e.setY(e.getY() - 0.7*e.getMovementSpeed()*delta);
                 }else{
                     e.setY(e.getY() - e.getMovementSpeed()*delta);
                 }
             }
-            if(e.getDown() && !e.getUp() && collides(e) == null){
+            if(e.getDown() && !e.getUp() && collides(e, 0) == null){
                 if(e.getLeft() ^ e.getRight()){
                     e.setY(e.getY() + 0.7*e.getMovementSpeed()*delta);
                 }else{
                     e.setY(e.getY() + e.getMovementSpeed()*delta);
                 }
             }
-            if(e.getLeft() && !e.getRight() && collides(e) == null){
+            if(e.getLeft() && !e.getRight() && collides(e, 0) == null){
                 if(e.getUp() ^ e.getDown()){
                     e.setX(e.getX() - 0.7*e.getMovementSpeed()*delta);
                 }else{
                     e.setX(e.getX() - e.getMovementSpeed()*delta);
                 }
             }
-            if(e.getRight() && !e.getLeft() && collides(e) == null){
+            if(e.getRight() && !e.getLeft() && collides(e, 0) == null){
                 if(e.getUp() ^ e.getDown()){
                     e.setX(e.getX() + 0.7*e.getMovementSpeed()*delta);
                 }else{
@@ -257,9 +254,9 @@ public class Game {
         }
         player.setRotation(mousex, mousey);
 
-        PickUp p = pickup_collides(player);
+        PickUp p = (PickUp)collides(player, 3);
         if(p != null){
-            pickups.remove(p);
+            room.getPickups().remove(p);
             if(p.getType() == PickUp.MONEY){
                 player.addMoney(p.getPower());
             }else{
@@ -268,7 +265,7 @@ public class Game {
         }
 
         int e_counter = 0;
-        for(Entity e: entities){
+        for(Entity e: room.getEntities()){
             //Trigger entity HOT and DOT effects
             e.trigger_effects();
             
@@ -306,7 +303,7 @@ public class Game {
         for(int i=0; i<e_counter; i++){
             Entity en = entities_to_remove[i];
             if(en != null){
-                entities.remove(en);
+                room.getEntities().remove(en);
             }
             entities_to_remove[i] = null;
         }
@@ -319,7 +316,7 @@ public class Game {
         while(i < projectiles.size()){
             Projectile pr = projectiles.get(i);
             pr.move(delta);
-            Drawable collision = collides(pr);
+            Drawable collision = (Drawable)collides(pr, 0);
             if(collision != null && !collision.equals(pr.getOrigin())){
                 projectiles_to_remove[p_counter++] = pr;
                 if(collision.getDrawableType() == Drawable.ENTITY){
@@ -341,10 +338,10 @@ public class Game {
 
         drawables = new ArrayList<>();
         drawables.addAll((ArrayList<Splat>)((Object)splats));
-        drawables.addAll((ArrayList<Drawable>)((Object)pickups));
+        drawables.addAll((ArrayList<Drawable>)((Object)room.getPickups()));
         drawables.addAll((ArrayList<Drawable>)((Object)projectiles));
-        drawables.addAll((ArrayList<Drawable>)((Object)entities));
-        drawables.addAll((ArrayList<Drawable>)((Object)blocks));
+        drawables.addAll((ArrayList<Drawable>)((Object)room.getEntities()));
+        drawables.addAll((ArrayList<Drawable>)((Object)room.getBlocks()));
 
         s.setDrawables(drawables);
     }
@@ -367,7 +364,7 @@ public class Game {
         return upscaling;
     }
     public static void addDrop(PickUp drop) {
-        pickups.add(drop);
+        Room.addPickup(drop);
     }
     //Static functions
     
@@ -381,136 +378,67 @@ public class Game {
     }
     
     //Does this object collide with a pickup
-    public PickUp pickup_collides(Rectangle r){
-        for(PickUp p: pickups){
-            if(r.intersects(p)){
-                return p;
-            }
+    /*
+        
+        */
+
+    /**
+     * @r: the rectangle you want to check if collides
+     * @param type:
+     0 = anything
+     1 = wall
+     2 = door
+     3 = pickup
+     */
+
+    public static Object collides(Rectangle r, int type){
+        
+        switch(type){
+                case 0:
+                    for(Entity en: Room.getEntities()){
+                        if(r.intersects(en) && !r.equals(en)){
+                            return en;
+                        }
+                    }
+                    //The last thing you fucked was changing the generate_level to just creating a room instead
+                    for(Block b: Room.getBlocks()){
+                        if(r.intersects(b)){
+                            return b;
+                        }
+                    }
+                    return null;
+                case 1:
+                    break;
+                case 2:
+                    for(Block b: Room.getBlocks()){
+                        if(b.getType() != Block.DOOR) continue;
+                        if(r.intersects(b)){
+                            return b;
+                        }
+                    }
+                    return null;
+                case 3:
+                    for(PickUp p: Room.getPickups()){
+                        if(r.intersects(p)){
+                            return p;
+                        }
+                    }
+                    return null;
+                default:
+                    break;
         }
         return null;
     }
     
-    //Does this object collide with a door
-    public Block door_collides(Rectangle r){
-        for(Block b: blocks){
-            if(b.getType() != Block.DOOR) continue;
-            if(r.intersects(b)){
-                return b;
-            }
-        }
-        return null;
-    }
-    
-    //Does this object collide with anything
-    public Drawable collides(Rectangle r){
-        for(Entity en: entities){
-            if(r.intersects(en) && !r.equals(en)){
-                return en;
-            }
-        }
-        for(Block b: blocks){
-            if(r.intersects(b)){
-                return b;
-            }
-        }
-        return null;
-    }
     
     private void loadPlayer(){
         player = new Player();
         player.setGame(this);
         player.init(5*blockSize, 5*blockSize, 50, 100, 10);
         System.out.println("playercoords: " + player.getX()+", " + player.getY());
-        entities.add(player);
+        room.getEntities().add(player);
         PickUp p = new PickUp(player.getX(), player.getY(), PickUp.BLOWDARTS);
         player.q_slot = p;
-    }
-    
-    private void generateLevel(){
-        int w = PLAYGROUND_WIDTH/blockSize; //Width as coordinates according to squares
-        int h = PLAYGROUND_HEIGHT/blockSize;//Height as coordinates according to squares
-        map = new Block[w][h];
-        pickup_map = new PickUp[w][h];
-        blocks = new ArrayList<>();
-        Block block = new Block(10, 10, 1, 1, Block.WALL);
-        blocks.add(block);
-        for(int i=0; i<w; i++){
-            //Left
-            if(i <= h-1) {
-                Block l = null;
-                if(i == h/2 || i == (h/2)-1 || i == (h/2)+1){
-                    l = new Block(0, i, 0.5, 1, Block.DOOR);
-                }else{
-                    l = new Block(0, i, 1, 1, Block.WALL);
-                }
-                map[0][i] = l;
-                blocks.add(l);
-            }
-            //Left
-            //Top
-            if(i <= w-1) {
-                Block t = null;
-                if(i == (w/2)-1 || i == w/2 || i == (w/2)+1){
-                    t = new Block(i, 0, 1, 0.5, Block.DOOR);
-                }else{
-                    t = new Block(i, 0, 1, 1, Block.WALL);
-                }
-                map[i][0] = t;
-                blocks.add(t);
-            }
-            //Top
-            //Right
-            if(i <= h-1) {
-                Block r = null;
-                if(i == (h/2)-1 || i == h/2 || i == (h/2)+1){
-                    r = new Block(w-0.5, i, 0.5, 1, Block.DOOR);
-                }else{
-                    r = new Block(w-1, i, 1, 1, Block.WALL);
-                }
-                map[w-1][i] = r;
-                blocks.add(r);
-            }
-            //Right
-            //Bottom
-            if(i <= w-1){
-                Block b = null;
-                if(i == w/2 || i == (w/2)-1 || i == (w/2)+1){
-                    b = new Block(i, h-0.5, 1, 0.5, Block.DOOR);
-                }else{
-                    b = new Block(i, h-1, 1, 1, Block.WALL);
-                }
-                map[i][h-1] = b;
-                blocks.add(b);
-            }
-            //Bottom
-            
-        }
-        pickups = new ArrayList<>();
-        
-        //Generate pickups
-        while(pickups.size() < 10){
-            int x = getRandom(1*blockSize, (int)((w-2)*blockSize));
-            int y = getRandom(1*blockSize, (int)((h-2)*blockSize));
-            if(pickup_map[x/blockSize][y/blockSize] == null){
-                PickUp p = new PickUp(x, y, PickUp.TACO);
-                pickups.add(p);
-            }else{
-                System.out.println("TACO CLASH!\nTACO TACO TACO BURRITO");
-            }
-        }
-        
-        //Generate zombies
-        while(entities.size() < 10){
-            int x = getRandom(1*blockSize, (int)((w-2)*blockSize));
-            int y = getRandom(1*blockSize, (int)((h-2)*blockSize));
-            if(collides(new Rectangle(x, y, blockSize, blockSize)) == null){
-                Zombie z = new Zombie(x, y);
-                entities.add(z);
-            }else{
-                System.out.println("ZOMBIE CLASH!");
-            }
-        }
-        
     }
     
     public void addProjectile(Projectile p){
@@ -674,8 +602,61 @@ public class Game {
 
         @Override
         public void mousePressed(MouseEvent e) {
-            holding_click = true;
-            hold_attack_time = System.nanoTime();
+            if(inMenu){
+                mouse_click = true;
+                for(Button b: menu.getButtons()){
+                    if(b.contains(new Point(e.getX(), e.getY()))){
+                        int action = b.getAction();
+                        switch(action){
+                            case Button.CONTINUE: 
+                                System.out.println("CONTINUE");
+                                return;
+                            case Button.PLAY:
+                                System.out.println("PLAY");
+                                init_game();
+                                return;
+                            case Button.SETTINGS:
+                                System.out.println("SETTINGS");
+                                return;
+                            case Button.HIGHSCORE:
+                                System.out.println("HIGHSCORE");
+                                return;
+                            case Button.EXIT:
+                                System.out.println("EXIT");
+                                System.exit(0);
+                                return;
+                            default:
+                                break;
+                        }
+                    }
+                }
+            }
+            else if(paused){
+                for(Button b: paused_menu.getButtons()){
+                    if(b.contains(new Point(e.getX(), e.getY()))){
+                        int action = b.getAction();
+                        switch(action){
+                            case Button.RESUME:
+                                System.out.println("RESUME");
+                                setPaused(false);
+                                return;
+                            case Button.SETTINGS:
+                                System.out.println("SETTINGS");
+                                return;
+                            case Button.EXIT:
+                                System.out.println("EXIT");
+                                goToMenu();
+                                return;
+                            default:
+                                break;
+                        }
+                    }
+                }
+            }
+            else{
+                holding_click = true;
+                hold_attack_time = System.nanoTime();
+            }
         }
 
         @Override

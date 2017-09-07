@@ -130,7 +130,7 @@ public class Entity extends Drawable{
             double temp = xCoor;
             this.xCoor = x;
             this.x = (int)x;
-            if(g.collides(this) != null){
+            if(g.collides(this, 0) != null){
                 //Unsticks entity if collision
                 this.xCoor = temp;
                 this.x = (int)temp;
@@ -143,7 +143,7 @@ public class Entity extends Drawable{
             double temp = yCoor;
             this.yCoor = y;
             this.y = (int)y;
-            if(g.collides(this) != null){
+            if(g.collides(this, 0) != null){
                 //Unsticks entity if collision
                 this.yCoor = temp;
                 this.y = (int)temp;

@@ -17,7 +17,6 @@ import java.util.ArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import pkg2dgame.Game;
-import utilities.Sound;
 
 /**
  *
@@ -254,7 +253,7 @@ public class Player extends Entity{
             this.xCoor = x;
             this.x = (int)x;
             
-            Block door = g.door_collides(this);
+            Block door = (Block) g.collides(this, 2);
             if(door != null){
                 if(x < Game.getWidth()/2){
                     System.out.println("LEFT DOOR");
@@ -263,7 +262,7 @@ public class Player extends Entity{
                 }
             }
             
-            if(g.collides(this) != null){
+            if(g.collides(this, 0) != null){
                 //Unsticks entity if collision
                 this.xCoor = temp;
                 this.x = (int)temp;
@@ -279,7 +278,7 @@ public class Player extends Entity{
             this.yCoor = y;
             this.y = (int)y;
             
-            Block door = g.door_collides(this);
+            Block door = (Block)g.collides(this, 2);
             if(door != null){
                 if(y < Game.getHeight()/2){
                     System.out.println("TOP DOOR");
@@ -288,7 +287,7 @@ public class Player extends Entity{
                 }
             }
             
-            if(g.collides(this) != null){
+            if(g.collides(this, 0) != null){
                 //Unsticks entity if collision
                 this.yCoor = temp;
                 this.y = (int)temp;
